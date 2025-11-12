@@ -1,0 +1,28 @@
+# Compiled binary
+graphics_program
+main
+
+# Large model files (too big for GitHub)
+erato/
+pine/
+buddha.obj
+bunny.obj
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Object files
+*.o
+*.obj
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
