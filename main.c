@@ -57,14 +57,6 @@ float g_size = 1.0f;
 
 unsigned int g_default_texture = 0;
 
-void cleanup() {
-    if (g_vertices) free(g_vertices);
-    if (g_normals) free(g_normals);
-    if (g_texcoords) free(g_texcoords);
-    if (g_faces) free(g_faces);
-    if (g_materials) free(g_materials);
-}
-
 void add_vertex(float x, float y, float z) {
     g_vertices = (vec3f*)realloc(g_vertices, (g_num_vertices + 1) * sizeof(vec3f));
     g_vertices[g_num_vertices++] = (vec3f){x, y, z};
@@ -116,21 +108,9 @@ unsigned int createDefaultTexture() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     
-    #define GRADIENT_SIZE 256
-    unsigned char* gradient = (unsigned char*)malloc(GRADIENT_SIZE * GRADIENT_SIZE * 4);
+    unsigned char gradient[8] = {0, 255, 0, 255, 0, 0, 255, 255};
     
-    for (int y = 0; y < GRADIENT_SIZE; y++) {
-        for (int x = 0; x < GRADIENT_SIZE; x++) {
-            int idx = (y * GRADIENT_SIZE + x) * 4;
-            gradient[idx + 0] = 255 - (x * 255 / GRADIENT_SIZE);
-            gradient[idx + 1] = 0;
-            gradient[idx + 2] = (x * 255 / GRADIENT_SIZE);
-            gradient[idx + 3] = 255;
-        }
-    }
-    
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, GRADIENT_SIZE, GRADIENT_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, gradient);
-    free(gradient);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, gradient);
     
     return textureID;
 }
@@ -152,12 +132,12 @@ unsigned int loadTexture(const char* filename) {
     if (data) {
         GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        printf("Loaded texture: %s (ID: %d)\n", filename, textureID);
+        printf("Carregando textura: %s (ID: %d)\n", filename, textureID);
         stbi_image_free(data);
         return textureID;
     }
     
-    printf("Failed to load texture: %s\n", filename);
+    printf("Falha ao carregar textura: %s\n", filename);
     stbi_image_free(data);
     return 0;
 }
@@ -188,7 +168,7 @@ void loadMTL(const char* filename, const char* base_dir) {
             char tex_path[2048];
             snprintf(tex_path, sizeof(tex_path), "%s/%s", base_dir, tex_name);
             
-            printf("Loading texture for material '%s': %s\n", g_materials[current_material].name, tex_path);
+            printf("Carregando textura '%s': %s\n", g_materials[current_material].name, tex_path);
             g_materials[current_material].texture_id = loadTexture(tex_path);
         }
     }
@@ -208,13 +188,6 @@ void loadOBJ(const char* filename) {
     free(path_copy);
 
     FILE* file = fopen(filename, "r");
-    if (!file) {
-        fprintf(stderr, "Erro: Não foi possível abrir %s\n", filename);
-        exit(1);
-    }
-    
-    atexit(cleanup);
-
     char line[1024];
     float min_v[3] = {1e9, 1e9, 1e9};
     float max_v[3] = {-1e9, -1e9, -1e9};
@@ -283,16 +256,12 @@ void myDisplay(void) {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     
-    gluLookAt(g_center[0], g_center[1], g_center[2] + g_size * 2.0, 
-              g_center[0], g_center[1], g_center[2], 
-              0.0, 1.0, 0.0);
-    
+    gluLookAt(g_center[0], g_center[1], g_center[2] + g_size * 2.0, g_center[0], g_center[1], g_center[2],  0.0, 1.0, 0.0);
     GLfloat light_pos[] = {g_center[0], g_center[1] + g_size, g_center[2] + g_size, 1.0};
     glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
     
     glRotatef(g_rotateX, 1.0f, 0.0f, 0.0f);
     glRotatef(g_rotateY, 0.0f, 1.0f, 0.0f);
-    glTranslatef(-g_center[0], -g_center[1], -g_center[2]);
     
     for (size_t i = 0; i < g_num_faces; i++) {
         face_t* f = &g_faces[i];
@@ -317,7 +286,7 @@ void myDisplay(void) {
         }
         glEnd();
     }
-
+    glTranslatef(-g_center[0], -g_center[1] + 1, -g_center[2]);
     glutSwapBuffers();
 }
 
@@ -369,21 +338,17 @@ int main(int argc, char** argv) {
     }
 
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutInitWindowSize(800, 600);
+    glutInitWindowSize(1000, 900);
     glutInitWindowPosition(100, 100);
     glutCreateWindow("Trabalho Computacao grafica"); 
 
     loadOBJ(argv[1]);
     
     g_default_texture = createDefaultTexture();
-    printf("\nAssigning default texture to materials without textures:\n");
     for (size_t i = 0; i < g_num_materials; i++) {
         if (g_materials[i].texture_id == 0) {
-            printf("  Material '%s' -> default gradient\n", g_materials[i].name);
             g_materials[i].texture_id = g_default_texture;
-        } else {
-            printf("  Material '%s' -> texture ID %d\n", g_materials[i].name, g_materials[i].texture_id);
-        }
+        } 
     }
 
     glEnable(GL_DEPTH_TEST); 
@@ -392,7 +357,7 @@ int main(int argc, char** argv) {
     glShadeModel(GL_SMOOTH);
     glEnable(GL_TEXTURE_2D);
 
-    GLfloat light_ambient[] = {0.2, 0.2, 0.2, 1.0};
+    GLfloat light_ambient[] = {1.0, 1.0, 1.0, 1.0};
     GLfloat light_diffuse[] = {1.0, 1.0, 1.0, 1.0};
     GLfloat light_specular[] = {1.0, 1.0, 1.0, 1.0};
     glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient); 
