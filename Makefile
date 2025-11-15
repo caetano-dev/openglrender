@@ -1,6 +1,6 @@
 CC = gcc
 
-TARGET = graphics_program
+TARGET = main
 
 SRCS = main.c
 

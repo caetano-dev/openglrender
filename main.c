@@ -60,18 +60,16 @@ material_t* g_materials = NULL;
 size_t g_num_materials = 0;
 size_t g_cap_materials = 0;
 
-// --- Rotação com Mouse ---
-int g_isDragging = 0;   // Verdadeiro se o mouse estiver sendo arrastado
-int g_lastX = 0, g_lastY = 0; // Última posição do mouse
-float g_rotateX = 0.0f; // Rotação acumulada no eixo X
-float g_rotateY = 0.0f; // Rotação acumulada no eixo Y
 
-// --- Bounding Box (Caixa Delimitadora) para Câmera ---
-float g_center[3] = {0.0f, 0.0f, 0.0f}; // Centro do modelo
-float g_size = 1.0f; // Maior dimensão do modelo
+int g_isDragging = 0; 
+int g_lastX = 0, g_lastY = 0;
+float g_rotateX = 0.0f;
+float g_rotateY = 0.0f; 
 
-// --- Textura Padrão Global ---
-unsigned int g_default_texture = 0; // Textura padrão para objetos sem material
+float g_center[3] = {0.0f, 0.0f, 0.0f}; 
+float g_size = 1.0f;
+
+unsigned int g_default_texture = 0;
 
 void cleanup() {
     printf("Limpando dados do OBJ...\n");
@@ -81,7 +79,6 @@ void cleanup() {
     
     if (g_texcoords) free(g_texcoords);
         if (g_materials) {
-            // Libera texturas da GPU
             for(size_t i = 0; i < g_num_materials; i++) {
                 if (g_materials[i].texture_id > 0) {
                     glDeleteTextures(1, &g_materials[i].texture_id);
@@ -90,8 +87,6 @@ void cleanup() {
             free(g_materials);
         }
 }
-
-// --- Funções Auxiliares de Alocação Dinâmica ---
 
 void add_vertex(float x, float y, float z) {
     if (g_num_vertices >= g_cap_vertices) {
@@ -140,7 +135,7 @@ void add_face(face_vertex_t v0, face_vertex_t v1, face_vertex_t v2, int material
     g_faces[g_num_faces].v[0] = v0;
     g_faces[g_num_faces].v[1] = v1;
     g_faces[g_num_faces].v[2] = v2;
-    g_faces[g_num_faces].material_id = material_id; // Salva o ID do material
+    g_faces[g_num_faces].material_id = material_id; 
     g_num_faces++;
 }
 int add_material(const char* name) {
@@ -331,7 +326,6 @@ void loadMTL(const char* filename, const char* base_dir) {
          strncpy(base_dir, path_copy, sizeof(base_dir) - 1);
      }
      free(path_copy);
-     // ----------------------------------------------------
  
      printf("Carregando %s (Base dir: %s)...\n", filename, base_dir);
      
@@ -341,7 +335,6 @@ void loadMTL(const char* filename, const char* base_dir) {
          exit(1);
      }
      
-     // Registra a limpeza para ser chamada ao sair
      atexit(cleanup);
  
      char line[1024];
@@ -349,10 +342,9 @@ void loadMTL(const char* filename, const char* base_dir) {
      float min_v[3] = {1e9, 1e9, 1e9};
      float max_v[3] = {-1e9, -1e9, -1e9};
      
-     int current_material_id = -1; // --- NOVO: Rastreia material ativo ---
+     int current_material_id = -1;
  
      while (fgets(line, sizeof(line), file)) {
-         // --- Carregar Vértices ---
          if (strncmp(line, "v ", 2) == 0) {
              float x, y, z;
              if (sscanf(line, "v %f %f %f", &x, &y, &z) == 3) {
@@ -400,27 +392,8 @@ void loadMTL(const char* filename, const char* base_dir) {
  
              // --- MODIFICADO: Parser de face mais robusto ---
              // Tenta ler formato v/vt/vn
-             int matches = sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d", 
+             sscanf(line, "f %d/%d/%d %d/%d/%d %d/%d/%d", 
                                   &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3);
-             if (matches == 9) {
-                 // v/vt/vn
-             } else {
-                 // Tenta ler formato v//vn
-                 matches = sscanf(line, "f %d//%d %d//%d %d//%d", 
-                                  &v1, &vn1, &v2, &vn2, &v3, &vn3);
-                 if (matches == 6) {
-                     // v//vn
-                 } else {
-                     // Tenta ler formato v
-                     matches = sscanf(line, "f %d %d %d", &v1, &v2, &v3);
-                     if (matches == 3) {
-                        // v
-                     } else {
-                         // Ignora esta face (provavelmente um polígono)
-                         continue;
-                     }
-                 }
-             }
              
              fv0 = (face_vertex_t){v1, vn1, vt1};
              fv1 = (face_vertex_t){v2, vn2, vt2};
